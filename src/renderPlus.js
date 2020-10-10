@@ -1,5 +1,7 @@
 const fs = require('fs');
 
+var thisRef = this;
+
 var getPartIDs = function (live2DModel) {
     var modelImpl = live2DModel.getModelImpl();
     let partIDs = [];
@@ -102,20 +104,22 @@ viewer.togglePlayPause = function () {
 }
 
 viewer.secret = function () {
-    live2DModel = live2DMgr.getModel(0).live2DModel;
-    getPartIDs(live2DModel);
-    getParamIDs(live2DModel);
+    // live2DModel = live2DMgr.getModel(0).live2DModel;
+    // getPartIDs(live2DModel);
+    // getParamIDs(live2DModel);
 
-    var modelImpl = live2DModel.getModelImpl();
-    parts = modelImpl._$F2;
-    partsCount = parts.length;
-    var elementCount = 0;
-    parts.forEach(element => {
-        console.log(element.getDrawData());
-        elementCount += element.getDrawData().length;
-    })
-    console.log("partCount", partsCount);
-    console.log("elementCount", elementCount);
+    // var modelImpl = live2DModel.getModelImpl();
+    // parts = modelImpl._$F2;
+    // partsCount = parts.length;
+    // var elementCount = 0;
+    // parts.forEach(element => {
+    //     console.log(element.getDrawData());
+    //     elementCount += element.getDrawData().length;
+    // })
+    // console.log("partCount", partsCount);
+    // console.log("elementCount", elementCount);
+
+    fs.readdirSync('assets/Live2d-model')
 }
 
 function initL2dCanvas(canvasId) {
@@ -299,21 +303,21 @@ function changeModel() {
  * マウスホイールによる拡大縮小
  */
 function modelScaling(scale) {
-    var isMaxScale = this.viewMatrix.isMaxScale();
-    var isMinScale = this.viewMatrix.isMinScale();
+    var isMaxScale = thisRef.viewMatrix.isMaxScale();
+    var isMinScale = thisRef.viewMatrix.isMinScale();
 
-    this.viewMatrix.adjustScale(0, 0, scale);
+    thisRef.viewMatrix.adjustScale(0, 0, scale);
 
     // 画面が最大になったときのイベント
     if (!isMaxScale) {
-        if (this.viewMatrix.isMaxScale()) {
-            this.live2DMgr.maxScaleEvent();
+        if (thisRef.viewMatrix.isMaxScale()) {
+            thisRef.live2DMgr.maxScaleEvent();
         }
     }
     // 画面が最小になったときのイベント
     if (!isMinScale) {
-        if (this.viewMatrix.isMinScale()) {
-            this.live2DMgr.minScaleEvent();
+        if (thisRef.viewMatrix.isMinScale()) {
+            thisRef.live2DMgr.minScaleEvent();
         }
     }
 }
@@ -324,7 +328,7 @@ function modelScaling(scale) {
  * タップされた場所に応じてモーションを再生
  */
 function modelTurnHead(event) {
-    this.drag = true;
+    thisRef.drag = true;
 
     var rect = event.target.getBoundingClientRect();
 
@@ -336,13 +340,13 @@ function modelTurnHead(event) {
     if (LAppDefine.DEBUG_MOUSE_LOG)
         l2dLog("onMouseDown device( x:" + event.clientX + " y:" + event.clientY + " ) view( x:" + vx + " y:" + vy + ")");
 
-    this.lastMouseX = sx;
-    this.lastMouseY = sy;
+    thisRef.lastMouseX = sx;
+    thisRef.lastMouseY = sy;
 
-    this.dragMgr.setPoint(vx, vy); // その方向を向く
+    thisRef.dragMgr.setPoint(vx, vy); // その方向を向く
 
     // タップした場所に応じてモーションを再生
-    this.live2DMgr.tapEvent(vx, vy);
+    thisRef.live2DMgr.tapEvent(vx, vy);
 }
 
 
@@ -360,11 +364,11 @@ function followPointer(event) {
     if (LAppDefine.DEBUG_MOUSE_LOG)
         l2dLog("onMouseMove device( x:" + event.clientX + " y:" + event.clientY + " ) view( x:" + vx + " y:" + vy + ")");
 
-    if (this.drag) {
-        this.lastMouseX = sx;
-        this.lastMouseY = sy;
+    if (thisRef.drag) {
+        thisRef.lastMouseX = sx;
+        thisRef.lastMouseY = sy;
 
-        this.dragMgr.setPoint(vx, vy); // その方向を向く
+        thisRef.dragMgr.setPoint(vx, vy); // その方向を向く
     }
 }
 
@@ -373,11 +377,11 @@ function followPointer(event) {
  * 正面を向く
  */
 function lookFront() {
-    if (this.drag) {
-        this.drag = false;
+    if (thisRef.drag) {
+        thisRef.drag = false;
     }
 
-    this.dragMgr.setPoint(0, 0);
+    thisRef.dragMgr.setPoint(0, 0);
 }
 
 
@@ -385,8 +389,8 @@ function mouseEvent(e) {
     e.preventDefault();
 
     if (e.type == "mousewheel") {
-        if (e.clientX < 0 || this.canvas.clientWidth < e.clientX ||
-            e.clientY < 0 || this.canvas.clientHeight < e.clientY) {
+        if (e.clientX < 0 || thisRef.canvas.clientWidth < e.clientX ||
+            e.clientY < 0 || thisRef.canvas.clientHeight < e.clientY) {
             return;
         }
 
@@ -439,10 +443,10 @@ function touchEvent(e) {
             var touch2 = e.touches[1];
 
             var len = Math.pow(touch1.pageX - touch2.pageX, 2) + Math.pow(touch1.pageY - touch2.pageY, 2);
-            if (this.oldLen - len < 0) modelScaling(1.025); // 上方向スクロール 拡大
+            if (thisRef.oldLen - len < 0) modelScaling(1.025); // 上方向スクロール 拡大
             else modelScaling(0.975); // 下方向スクロール 縮小
 
-            this.oldLen = len;
+            thisRef.oldLen = len;
         }
 
     } else if (e.type == "touchend") {
