@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Live2D Tool</title>
+  <!-- https://electronjs.org/docs/tutorial/security#csp-meta-tag -->
+  <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';" />
+</head>
+
+<body onload="viewer()">
+  <canvas id="glcanvas" width="900px" height="900px" style="border:dashed 1px #CCC"></canvas>
+
+  <!-- Live2D Library -->
+  <script src="src/live2d/live2d.core.js"></script>
+
+  <!-- Live2D Framework -->
+  <script src="src/live2d/Live2DFramework.js"></script>
+
+  <!-- User's Script -->
+  <!-- <script src="src/render.js"></script> -->
+
+  <!-- User's Script (Plus) -->
+  <script src="src/utils/MatrixStack.js"></script>
+  <script src="src/utils/ModelSettingJson.js"></script>
+  <script src="src/PlatformManager.js"></script>
+  <script src="src/LAppDefine.js"></script>
+  <script src="src/LAppModel.js"></script>
+  <script src="src/LAppLive2DManager.js"></script>
+  <script src="src/renderPlus.js"></script>
+
+  <p>
+    <button id="btnChange" class="active">Change Model</button>
+    <button id="btnPlayPause">Play</button>
+    <button id="btnSave">Save As Image</button>
+    <button id="btnSaveLayer">Save As Layers</button>
+    <button id="btnSecret">Secret</button>
+  </p>
+</body>
+
+</html>
