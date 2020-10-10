@@ -1,4 +1,5 @@
-const fs = require('fs');
+const fs = require("fs");
+const path = require("path");
 
 var thisRef = this;
 
@@ -79,7 +80,7 @@ function viewer() {
 viewer.save = function (path = "image.png") {
     var img = canvas.toDataURL();
     var data = img.replace(/^data:image\/\w+;base64,/, "");
-    var buf = Buffer.from(data, 'base64');
+    var buf = Buffer.from(data, "base64");
     fs.writeFileSync(path, buf);
 }
 
@@ -91,7 +92,7 @@ viewer.saveLayer = function () {
     elementList.forEach((e, index) => {
         drawElement(e.element);
         var order = ("000" + index).slice(-4);
-        viewer.save(order + '_' + e.partID + ".png");
+        viewer.save(order + "_" + e.partID + ".png");
     })
     draw(gl);
     viewer.save("all.png");
@@ -104,22 +105,93 @@ viewer.togglePlayPause = function () {
 }
 
 viewer.secret = function () {
-    // live2DModel = live2DMgr.getModel(0).live2DModel;
-    // getPartIDs(live2DModel);
-    // getParamIDs(live2DModel);
+    live2DModel = live2DMgr.getModel(0).live2DModel;
+    getPartIDs(live2DModel);
+    getParamIDs(live2DModel);
 
-    // var modelImpl = live2DModel.getModelImpl();
-    // parts = modelImpl._$F2;
-    // partsCount = parts.length;
-    // var elementCount = 0;
-    // parts.forEach(element => {
-    //     console.log(element.getDrawData());
-    //     elementCount += element.getDrawData().length;
-    // })
-    // console.log("partCount", partsCount);
-    // console.log("elementCount", elementCount);
+    var modelImpl = live2DModel.getModelImpl();
+    parts = modelImpl._$F2;
+    partsCount = parts.length;
+    var elementCount = 0;
+    parts.forEach(element => {
+        console.log(element.getDrawData());
+        elementCount += element.getDrawData().length;
+    })
+    console.log("partCount", partsCount);
+    console.log("elementCount", elementCount);
+}
 
-    fs.readdirSync('assets/Live2d-model')
+function loadModel(filelist) {
+    let modelJsonList = [];
+    filelist.forEach((filepath) => {
+        if (filepath.endsWith(".moc")) {
+            modelJson = getJson(filepath);
+            if (modelJson) {
+                modelJsonList.push(getJson(filepath));
+            }
+        }
+    })
+    console.log("loadModel", modelJsonList.length + " model loaded");
+    return modelJsonList;
+}
+
+function getJson(mocPath) {
+    pardir = path.dirname(mocPath);
+    let textures = [];
+    let motions = [];
+    let physics;
+    let modelJson;
+    walkdir(pardir, function (filepath) {
+        if (filepath.endsWith(".png")) {
+            textures.push(filepath.replace(pardir + '/', ''));
+        } else if (filepath.endsWith(".mtn")) {
+            motions.push(filepath.replace(pardir + '/', ''));
+        } else if (filepath.endsWith(".physics")) {
+            physics = filepath.replace(pardir + '/', '');
+        } else if (filepath.endsWith("model.json")) {
+            modelJson = filepath;
+        }
+    })
+    if (!modelJson) {
+        if (textures.length == 0) {
+            console.warn('getJson', '0 texture found! .moc path: ' + mocPath);
+        } else {
+            textures.sort();
+            motions.sort();
+            var model = {};
+            model["version"] = "Default 1.0.0";
+            model["model"] = mocPath.replace(pardir + '/', '');
+            model["textures"] = textures;
+            model["layout"] = {
+                "center_x": 0.0,
+                "y": 1,
+                "width": 2
+            }
+            if (motions.length > 0) {
+                model["motions"] = {
+                    "": motions
+                }
+            }
+            json = JSON.stringify(model);
+            modelJson = path.join(pardir, "generated.model.json");
+            fs.writeFileSync(modelJson, json);
+        }
+    }
+    return modelJson;
+}
+
+function walkdir(dir, callback) {
+    console.log("walkdir", dir);
+    const files = fs.readdirSync(dir);
+    files.forEach((file) => {
+        var filepath = path.join(dir, file);
+        const stats = fs.statSync(filepath);
+        if (stats.isDirectory()) {
+            walkdir(filepath, callback);
+        } else if (stats.isFile()) {
+            callback(filepath);
+        }
+    })
 }
 
 function initL2dCanvas(canvasId) {
@@ -152,8 +224,13 @@ function initL2dCanvas(canvasId) {
 
 }
 
-
 function init() {
+    // Load all models
+    const root = "assets/Live2d-model";
+    let filelist = [];
+    walkdir(root, function (filepath) { filelist.push(filepath) });
+    this.live2DMgr.setModelJsonList(loadModel(filelist));
+
     // 3Dバッファの初期化
     var width = this.canvas.width;
     var height = this.canvas.height;
