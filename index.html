@@ -9,7 +9,7 @@
 </head>
 
 <body onload="viewer()">
-  <canvas id="glcanvas" width="900px" height="900px" style="border:dashed 1px #CCC"></canvas>
+  <canvas id="glcanvas" width="800px" height="800px" style="border:dashed 1px #CCC"></canvas>
 
   <!-- Live2D Library -->
   <script src="src/live2d/live2d.core.js"></script>
@@ -28,9 +28,12 @@
   <script src="src/LAppModel.js"></script>
   <script src="src/LAppLive2DManager.js"></script>
   <script src="src/renderPlus.js"></script>
-
+  <div id="txtInfo" style="color: #ffffff; background-color: transparent"></div>
   <p>
-    <button id="btnChange" class="active">Change Model</button>
+    <button id="btnPrev" class="active">Prev Model</button>
+    <button id="btnNext" class="active">Next Model</button>
+    <input type="number" id="editGoto" min="0" value="0">
+    <button id="btnGoto">Goto Model</button>
     <button id="btnPlayPause">Play</button>
     <button id="btnSave">Save As Image</button>
     <button id="btnSaveLayer">Save As Layers</button>

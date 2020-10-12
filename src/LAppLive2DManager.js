@@ -38,6 +38,9 @@ LAppLive2DManager.prototype.changeModel = function (gl) {
         // モデル切り替えボタンが押された時、モデルを再読み込みする
         this.reloadFlg = false;
 
+        if (this.count < 0){
+            this.count = 0;
+        }
         var no = parseInt(this.count % this.modelJsonList.length)
         this.releaseModel(0, gl);
         this.createModel();

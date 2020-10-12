@@ -1,5 +1,8 @@
 const fs = require("fs");
 const path = require("path");
+const nativeTheme = require("electron");
+
+nativeTheme.themeSource = "dark";
 
 var thisRef = this;
 
@@ -57,6 +60,9 @@ function viewer() {
     this.isPlay = true;
     this.frameCount = 0;
 
+    this.btnGoto = document.getElementById("btnGoto");
+    this.btnGoto.addEventListener("click", function (e) { goto() })
+
     this.btnPlayPause = document.getElementById("btnPlayPause");
     this.btnPlayPause.addEventListener("click", function (e) { viewer.togglePlayPause() })
     this.btnPlayPause.textContent = (this.isPlay) ? "Pause" : "Play";
@@ -69,6 +75,11 @@ function viewer() {
 
     this.btnSecret = document.getElementById("btnSecret");
     this.btnSecret.addEventListener("click", function (e) { viewer.secret() })
+
+    this.invalidList = [];
+    if (fs.existsSync("invalid")) {
+        this.invalidList = fs.readFileSync("invalid").toString().split("\n");
+    }
 
     // モデル描画用canvasの初期化
     initL2dCanvas("glcanvas");
@@ -127,55 +138,81 @@ function loadModel(filelist) {
         if (filepath.endsWith(".moc")) {
             modelJson = getJson(filepath);
             if (modelJson) {
-                modelJsonList.push(getJson(filepath));
+                modelJsonList.push(...modelJson);
             }
         }
     })
+    modelJsonList = [...new Set(modelJsonList)];
+    modelJsonList = modelJsonList.filter(
+        function (e) {
+            return this.indexOf(e) < 0;
+        },
+        this.invalidList
+    );
     console.log("loadModel", modelJsonList.length + " model loaded");
     return modelJsonList;
+}
+
+function flagInvalid() {
+    var totalModelNo = this.live2DMgr.modelJsonList.length;
+    var count = this.live2DMgr.count;
+    if (count < 0) count = 0;
+    var curModelNo = parseInt(count % totalModelNo);
+    var curModelPath = this.live2DMgr.modelJsonList[curModelNo];
+    fs.appendFileSync("invalid", curModelPath + '\n');
+    console.log('flagInvalid', 'Flagged ' + curModelPath);
+}
+
+function goto() {
+    const no = parseInt(this.document.getElementById('editGoto').value);
+    this.live2DMgr.count = no;
+    changeModel(false);
 }
 
 function getJson(mocPath) {
     pardir = path.dirname(mocPath);
     let textures = [];
     let motions = [];
-    let physics;
-    let modelJson;
+    let physics = [];
+    let modelJson = [];
     walkdir(pardir, function (filepath) {
         if (filepath.endsWith(".png")) {
             textures.push(filepath.replace(pardir + '/', ''));
         } else if (filepath.endsWith(".mtn")) {
             motions.push(filepath.replace(pardir + '/', ''));
-        } else if (filepath.endsWith(".physics")) {
-            physics = filepath.replace(pardir + '/', '');
+        } else if (filepath.endsWith("physics") || filepath.endsWith("physics.json")) {
+            physics.push(filepath.replace(pardir + '/', ''));
         } else if (filepath.endsWith("model.json")) {
-            modelJson = filepath;
+            modelJson.push(filepath);
         }
     })
-    if (!modelJson) {
+    if (modelJson.length == 0) {
         if (textures.length == 0) {
             console.warn('getJson', '0 texture found! .moc path: ' + mocPath);
-        } else {
-            textures.sort();
-            motions.sort();
-            var model = {};
-            model["version"] = "Default 1.0.0";
-            model["model"] = mocPath.replace(pardir + '/', '');
-            model["textures"] = textures;
-            model["layout"] = {
-                "center_x": 0.0,
-                "y": 1,
-                "width": 2
-            }
-            if (motions.length > 0) {
-                model["motions"] = {
-                    "": motions
-                }
-            }
-            json = JSON.stringify(model);
-            modelJson = path.join(pardir, "generated.model.json");
-            fs.writeFileSync(modelJson, json);
         }
+        if (physics.length > 1) {
+            console.warn('getJson', 'more than 1 physics found! .moc path: ' + mocPath);
+        }
+        textures.sort();
+        motions.sort();
+        var model = {};
+        model["version"] = "Sample 1.0.0";
+        model["model"] = mocPath.replace(pardir + '/', '');
+        model["textures"] = textures;
+        if (motions.length > 0) {
+            model["motions"] = { "idle": [] };
+            motions.forEach(motion => {
+                var basename = path.basename(motion, ".mtn");
+                if (basename.includes("idle")) {
+                    model["motions"]["idle"].push({ "file": motion });
+                } else {
+                    model["motions"][basename] = { "file": motion };
+                }
+            })
+        }
+        json = JSON.stringify(model, null, 3);
+        modelJson.push(path.join(pardir, "generated.model.json"));
+        fs.writeFileSync(modelJson[0], json);
     }
     return modelJson;
 }
@@ -217,10 +254,30 @@ function initL2dCanvas(canvasId) {
 
     }
 
-    btnChangeModel = document.getElementById("btnChange");
-    btnChangeModel.addEventListener("click", function (e) {
+    btnPrev = document.getElementById("btnPrev");
+    btnNext = document.getElementById("btnNext");
+    btnPrev.addEventListener("click", function (e) {
+        changeModel(false);
+    });
+    btnNext.addEventListener("click", function (e) {
         changeModel();
     });
+
+
+    document.addEventListener("keydown", function (e) {
+        var keyCode = e.keyCode;
+        if (keyCode == 90) {
+            // z key
+            changeModel(false)
+        }
+        else if (keyCode == 88) {
+            // x key
+            changeModel();
+        }
+        else if (keyCode == 32) {
+            flagInvalid();
+        }
+    })
 
 }
 
@@ -333,10 +390,13 @@ function draw() {
 
             if (!this.isModelShown && i == this.live2DMgr.numModels() - 1) {
                 this.isModelShown = !this.isModelShown;
-                var btnChange = document.getElementById("btnChange");
-                btnChange.textContent = "Change Model";
-                btnChange.removeAttribute("disabled");
-                btnChange.setAttribute("class", "active");
+                var btnPrev = document.getElementById("btnPrev");
+                btnPrev.removeAttribute("disabled");
+                btnPrev.setAttribute("class", "active");
+
+                var btnNext = document.getElementById("btnNext");
+                btnNext.removeAttribute("disabled");
+                btnNext.setAttribute("class", "active");
             }
         }
     }
@@ -361,15 +421,28 @@ function drawElement(element) {
 }
 
 
-function changeModel() {
-    var btnChange = document.getElementById("btnChange");
-    btnChange.setAttribute("disabled", "disabled");
-    btnChange.setAttribute("class", "inactive");
-    btnChange.textContent = "Now Loading...";
+function changeModel(isNext = true) {
+    var btnPrev = document.getElementById("btnPrev");
+    btnPrev.setAttribute("disabled", "disabled");
+    btnPrev.setAttribute("class", "inactive");
+
+    var btnNext = document.getElementById("btnNext");
+    btnNext.setAttribute("disabled", "disabled");
+    btnNext.setAttribute("class", "inactive");
+
     this.isModelShown = false;
 
     this.live2DMgr.reloadFlg = true;
-    this.live2DMgr.count++;
+    this.live2DMgr.count += (isNext ? 1 : -1)
+
+    var txtInfo = document.getElementById("txtInfo");
+
+    var totalModelNo = this.live2DMgr.modelJsonList.length;
+    var count = this.live2DMgr.count;
+    if (count < 0) count = 0;
+    var curModelNo = parseInt(count % totalModelNo);
+    var curModelPath = this.live2DMgr.modelJsonList[curModelNo];
+    txtInfo.textContent = "[" + (curModelNo + 1) + "/" + totalModelNo + "] " + curModelPath;
 
     this.live2DMgr.changeModel(this.gl);
 }

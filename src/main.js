@@ -15,6 +15,9 @@ function createWindow () {
 
   // Open the DevTools.
   win.webContents.openDevTools()
+  win.webContents.on('devtools-opened', () => {
+    win.webContents.focus();
+  });
 }
 
 // This method will be called when Electron has finished
