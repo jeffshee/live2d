@@ -132,6 +132,19 @@ viewer.secret = function () {
     console.log("elementCount", elementCount);
 }
 
+function prettyPrintEveryJson(){
+    walkdir("assets/Live2d-model", (file) => {
+        if (file.endsWith(".json")){
+            j = fs.readFileSync(file).toString();
+            try{
+                fs.writeFileSync(file, JSON.stringify(JSON.parse(j), null, 3));
+            } catch (error){
+                console.error("JSON Parse Error", file);
+            }
+        }
+    })
+}
+
 function loadModel(filelist) {
     let modelJsonList = [];
     filelist.forEach((filepath) => {
@@ -218,7 +231,7 @@ function getJson(mocPath) {
 }
 
 function walkdir(dir, callback) {
-    console.log("walkdir", dir);
+    // console.log("walkdir", dir);
     const files = fs.readdirSync(dir);
     files.forEach((file) => {
         var filepath = path.join(dir, file);
@@ -282,6 +295,9 @@ function initL2dCanvas(canvasId) {
 }
 
 function init() {
+    // YOLO and pretty print all JSON file!!
+    // prettyPrintEveryJson();
+
     // Load all models
     const root = "assets/Live2d-model";
     let filelist = [];
