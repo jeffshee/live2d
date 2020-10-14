@@ -455,11 +455,6 @@ LAppModel.prototype.draw = function(gl)
         
 LAppModel.prototype.drawElement = function(gl, element)
 {
-    //console.log("--> LAppModel.draw()");
-    
-    // if(this.live2DModel == null) return;
-    
-    // 通常
     MatrixStack.push();
     
     MatrixStack.multMatrix(this.modelMatrix.getArray());
@@ -469,7 +464,6 @@ LAppModel.prototype.drawElement = function(gl, element)
     this.live2DModel.drawElement(element);
     
     MatrixStack.pop();
-    
 };
 
 /*

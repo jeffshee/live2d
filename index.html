@@ -9,7 +9,9 @@
 </head>
 
 <body onload="viewer()">
-  <canvas id="glcanvas" width="800px" height="800px" style="border:dashed 1px #CCC"></canvas>
+  <div style="max-height: 900px;max-width:900px;overflow: scroll;">
+    <canvas id="glcanvas" width="1024px" height="1024px" style="border:dashed 1px #CCC"></canvas>
+  </div>
 
   <!-- Live2D Library -->
   <script src="src/live2d/live2d.core.js"></script>
@@ -32,12 +34,14 @@
   <p>
     <button id="btnPrev" class="active">Prev Model</button>
     <button id="btnNext" class="active">Next Model</button>
-    <input type="number" id="editGoto" min="0" value="0">
+    <input type="number" id="editGoto" min="1" value="1">
     <button id="btnGoto">Goto Model</button>
     <button id="btnPlayPause">Play</button>
     <button id="btnSave">Save As Image</button>
     <button id="btnSaveLayer">Save As Layers</button>
     <button id="btnSecret">Secret</button>
+    <button id="btnBatch">Batch</button>
+    <button id="btnResize">Resize</button>
   </p>
 </body>
 

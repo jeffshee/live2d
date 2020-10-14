@@ -9,7 +9,7 @@ function LAppLive2DManager() {
     this.models = [];  // LAppModel
 
     //  サンプル機能
-    this.count = -1;
+    this.count = 0;
     this.reloadFlg = false; // モデル再読み込みのフラグ
 
     Live2D.init();
@@ -17,9 +17,17 @@ function LAppLive2DManager() {
 
 }
 
+
+LAppLive2DManager.prototype.getCount = function (){
+    if (this.count < 0) this.count = 0;
+    return parseInt(this.count % this.modelJsonList.length);
+}
+
+
 LAppLive2DManager.prototype.setModelJsonList = function (modelJsonList) {
     this.modelJsonList = modelJsonList;
 }
+
 
 LAppLive2DManager.prototype.createModel = function () {
     // console.log("--> LAppLive2DManager.createModel()");
@@ -31,20 +39,17 @@ LAppLive2DManager.prototype.createModel = function () {
 }
 
 
-LAppLive2DManager.prototype.changeModel = function (gl) {
+LAppLive2DManager.prototype.changeModel = function (gl, callback = null) {
     // console.log("--> LAppLive2DManager.update(gl)");
 
     if (this.reloadFlg) {
         // モデル切り替えボタンが押された時、モデルを再読み込みする
         this.reloadFlg = false;
 
-        if (this.count < 0){
-            this.count = 0;
-        }
-        var no = parseInt(this.count % this.modelJsonList.length)
+        var no = this.getCount();
         this.releaseModel(0, gl);
         this.createModel();
-        this.models[0].load(gl, this.modelJsonList[no]);
+        this.models[0].load(gl, this.modelJsonList[no], callback);
     }
 };
 

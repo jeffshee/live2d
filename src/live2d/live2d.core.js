@@ -3357,16 +3357,10 @@ For licensing, http://link.live2d.com/sdk_license
                 element = nextElement;
             } while (true);
         }
-        console.log("getElementList", elementList);
         return elementList;
     }
     // Hack
     y.prototype.drawElement = function (aM, element) {
-        if (this._$Ws == null) {
-            q._$li("call _$Ri.update() before _$Ri.draw() ");
-            return;
-        }
-        var aP = this._$Ws.length;
         aM._$ZT();
         var aH = this._$aS[element];
         var aI = this._$8b[element];
