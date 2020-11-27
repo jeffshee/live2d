@@ -5,6 +5,11 @@ const { timeStamp, time } = require("console");
 
 nativeTheme.themeSource = "dark";
 
+// Parameters
+const modelRoot = "../../data/Live2d-model"
+const outputRoot = "output"
+const baseResolution = 1024
+
 var thisRef = this;
 
 var getPartIDs = function (modelImpl) {
@@ -70,13 +75,19 @@ function viewer() {
             viewer.changeModel(1);
         }
         else if (keyCode == 32) {
-            flagInvalid();
+            viewer.flagBlacklist();
         }
     });
 
-    this.invalidList = [];
-    if (fs.existsSync("invalid")) {
-        this.invalidList = fs.readFileSync("invalid").toString().split("\n");
+    this.blacklist = [];
+    balcklistPath = path.join(outputRoot, "blacklist.txt");
+    if (fs.existsSync(balcklistPath)) {
+        this.blacklist = fs.readFileSync(balcklistPath).toString().split("\n");
+        // Append modelRoot to the paths
+        this.blacklist.forEach((item, index) => {
+            this.blacklist[index] = path.join(modelRoot, item)
+        })
+
     }
 
     // モデル描画用canvasの初期化
@@ -91,24 +102,27 @@ viewer.goto = function () {
     viewer.changeModel(0);
 }
 
-viewer.save = function (path = "image.png") {
+viewer.save = function (filepath = path.join(outputRoot, "image.png")) {
     // Save canvas to png file
     var img = canvas.toDataURL();
     var data = img.replace(/^data:image\/\w+;base64,/, "");
     var buf = Buffer.from(data, "base64");
-    fs.writeFileSync(path, buf);
+    fs.writeFileSync(filepath, buf);
 }
 
-viewer.saveLayer = function (dir = ".") {
+viewer.saveLayer = function (dir = path.join(outputRoot, "layer")) {
+    // Create dir
+    fs.mkdirSync(dir, { recursive: true });
+
     // Keep previous playing state, and set to pause to stop calling draw()
     var prevIsPlay = isPlay;
     isPlay = false;
-    
+
     // Remember to update the model before calling getElementList()
     var model = live2DMgr.getModel(0);
     model.update(frameCount);
     var elementList = model.live2DModel.getElementList();
-    
+
     // Save images for each element
     MatrixStack.reset();
     MatrixStack.loadIdentity();
@@ -124,7 +138,7 @@ viewer.saveLayer = function (dir = ".") {
         model.drawElement(gl, element);
         viewer.save(path.join(dir, order + "_" + partID + ".png"));
     })
-    
+
     MatrixStack.pop();
 
     // Draw an image with all elements
@@ -164,7 +178,7 @@ viewer.batch = function () {
         if (count < live2DMgr.modelJsonList.length) {
             console.log("Batch operation", document.getElementById("txtInfo").textContent)
             var no = ("000" + (count + 1)).slice(-4);
-            var dir = path.join("output", no);
+            var dir = path.join(outputRoot, no);
             fs.mkdirSync(dir, { recursive: true });
             viewer.saveLayer(dir);
             viewer.changeModel(1);
@@ -183,14 +197,23 @@ viewer.resize = function () {
     live2DModel = live2DMgr.getModel(0).live2DModel;
     if (live2DModel == null) return;
 
-    canvas.width = live2DModel.getCanvasWidth() / live2DModel.getCanvasHeight() * baseHeight;
-    canvas.height = baseHeight;
+    var modelWidth = live2DModel.getCanvasWidth();
+    var modelHeight = live2DModel.getCanvasHeight();
+    if (modelHeight > modelWidth) {
+        // Portrait
+        canvas.width = baseResolution;
+        canvas.height = modelHeight / modelWidth * baseResolution;
 
-    var width = canvas.width;
-    var height = canvas.height;
+    } else {
+        canvas.width = modelWidth / modelHeight * baseResolution;
+        canvas.height = baseResolution;
+    }
+
+    // canvas.width = live2DModel.getCanvasWidth() / live2DModel.getCanvasHeight() * baseHeight;
+    // canvas.height = baseHeight;
 
     // ビュー行列
-    var ratio = height / width;
+    var ratio = canvas.height / canvas.width;
     var left = LAppDefine.VIEW_LOGICAL_LEFT;
     var right = LAppDefine.VIEW_LOGICAL_RIGHT;
     var bottom = -ratio;
@@ -211,14 +234,14 @@ viewer.resize = function () {
     viewMatrix.setMinScale(LAppDefine.VIEW_MIN_SCALE);
 
     projMatrix = new L2DMatrix44();
-    projMatrix.multScale(1, (width / height));
+    projMatrix.multScale(1, (canvas.width / canvas.height));
 
     // マウス用スクリーン変換行列
     deviceToScreen = new L2DMatrix44();
-    deviceToScreen.multTranslate(-width / 2.0, -height / 2.0);
-    deviceToScreen.multScale(2 / width, -2 / width);
+    deviceToScreen.multTranslate(-canvas.width / 2.0, -canvas.height / 2.0);
+    deviceToScreen.multScale(2 / canvas.width, -2 / canvas.width);
 
-    gl.viewport(0, 0, width, height);
+    gl.viewport(0, 0, canvas.width, canvas.height);
 }
 
 viewer.initL2dCanvas = function (canvasId) {
@@ -274,9 +297,8 @@ viewer.init = function () {
     btnResize.addEventListener("click", function (e) { viewer.resize() });
 
     // Load all models
-    const root = "assets/Live2d-model";
     let filelist = [];
-    walkdir(root, function (filepath) { filelist.push(filepath) });
+    walkdir(modelRoot, function (filepath) { filelist.push(filepath) });
     live2DMgr.setModelJsonList(loadModel(filelist));
 
     // 3Dバッファの初期化
@@ -363,6 +385,10 @@ viewer.draw = function () {
     MatrixStack.loadIdentity();
 
     dragMgr.update(); // ドラッグ用パラメータの更新
+
+    // Note: face direction, top-left (-1,1), top-right (1,1), bottom-left (-1,-1), bottom-right (1,-1)
+    // dragMgr.setPoint(1, 1); // その方向を向く
+
     live2DMgr.setDrag(dragMgr.getX(), dragMgr.getY());
 
     // Canvasをクリアする
@@ -424,15 +450,17 @@ viewer.changeModel = function (inc = 1) {
     live2DMgr.changeModel(gl, viewer.resize);
 }
 
-viewer.flagInvalid = function () {
+viewer.flagBlacklist = function () {
     var count = live2DMgr.getCount();
     var curModelPath = live2DMgr.modelJsonList[count];
-    fs.appendFileSync("invalid", curModelPath + '\n');
-    console.log('flagInvalid', 'Flagged ' + curModelPath);
+    relativeCurModelPath = curModelPath.slice(modelRoot.length + 1) // Include the '/'
+    blacklistPath = path.join(outputRoot, "blacklist.txt");
+    fs.appendFileSync(blacklistPath, relativeCurModelPath + '\n');
+    console.log('flagBlacklist', 'Flagged ' + relativeCurModelPath);
 }
 
 function prettyPrintEveryJson() {
-    walkdir("assets/Live2d-model", (file) => {
+    walkdir(modelRoot, (file) => {
         if (file.endsWith(".json")) {
             j = fs.readFileSync(file).toString();
             try {
@@ -459,7 +487,7 @@ function loadModel(filelist) {
         function (e) {
             return this.indexOf(e) < 0;
         },
-        this.invalidList
+        this.blacklist
     );
     console.log("loadModel", modelJsonList.length + " model loaded");
     return modelJsonList;
@@ -498,12 +526,14 @@ function getJson(mocPath) {
         if (motions.length > 0) {
             model["motions"] = { "idle": [] };
             motions.forEach(motion => {
-                var basename = path.basename(motion, ".mtn");
-                if (basename.includes("idle")) {
-                    model["motions"]["idle"].push({ "file": motion });
-                } else {
-                    model["motions"][basename] = { "file": motion };
-                }
+                // Set all motion as idle motion, check commented out code for previous method
+                model["motions"]["idle"].push({ "file": motion });
+                // var basename = path.basename(motion, ".mtn");
+                // if (basename.includes("idle")) {
+                //     model["motions"]["idle"].push({ "file": motion });
+                // } else {
+                //     model["motions"][basename] = { "file": motion };
+                // }
             })
         }
         json = JSON.stringify(model, null, 3);
