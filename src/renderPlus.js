@@ -80,7 +80,7 @@ function viewer() {
     });
 
     this.blacklist = [];
-    balcklistPath = path.join(outputRoot, "blacklist.txt");
+    balcklistPath = "blacklist.txt";
     if (fs.existsSync(balcklistPath)) {
         this.blacklist = fs.readFileSync(balcklistPath).toString().split("\n");
         // Append modelRoot to the paths
@@ -130,20 +130,27 @@ viewer.saveLayer = function (dir = path.join(outputRoot, "layer")) {
     MatrixStack.multMatrix(viewMatrix.getArray());
     MatrixStack.push();
 
+    // Draw an image with all elements
+    viewer.save(path.join(dir, "all.png"));
+
     elementList.forEach((item, index) => {
         var element = item.element;
         var partID = item.partID;
         var order = ("000" + index).slice(-4);
         gl.clear(gl.COLOR_BUFFER_BIT);
         model.drawElement(gl, element);
-        viewer.save(path.join(dir, order + "_" + partID + ".png"));
+        // Separate directory for each partID
+        if (!fs.existsSync(path.join(dir, partID))){
+            fs.mkdirSync(path.join(dir, partID))
+        }
+        viewer.save(path.join(dir, partID, order + "_" + partID + ".png"));
     })
 
     MatrixStack.pop();
 
     // Draw an image with all elements
-    viewer.draw(gl);
-    viewer.save(path.join(dir, "all.png"));
+    // viewer.draw(gl);
+    // viewer.save(path.join(dir, "all.png"));
     isPlay = prevIsPlay;
 }
 
@@ -454,7 +461,7 @@ viewer.flagBlacklist = function () {
     var count = live2DMgr.getCount();
     var curModelPath = live2DMgr.modelJsonList[count];
     relativeCurModelPath = curModelPath.slice(modelRoot.length + 1) // Include the '/'
-    blacklistPath = path.join(outputRoot, "blacklist.txt");
+    blacklistPath = "blacklist.txt";
     fs.appendFileSync(blacklistPath, relativeCurModelPath + '\n');
     console.log('flagBlacklist', 'Flagged ' + relativeCurModelPath);
 }

@@ -1,5 +1,5 @@
 .vscode/
 assets/
 node_modules/
-output/
+output*/
 invalid
