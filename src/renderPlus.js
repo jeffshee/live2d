@@ -6,35 +6,35 @@ const { timeStamp, time } = require("console");
 nativeTheme.themeSource = "dark";
 
 // Parameters
-const modelRoot = "../../data/Live2d-model"
-const outputRoot = "output"
-const baseResolution = 1024
+const modelRoot = "../../data/Live2d-model";
+const outputRoot = "output";
+const baseResolution = 1024;
 
 var thisRef = this;
 
 var getPartIDs = function (modelImpl) {
     let partIDs = [];
     partsDataList = modelImpl._$Xr();
-    partsDataList.forEach(element => {
+    partsDataList.forEach((element) => {
         partIDs.push(element._$NL.id);
     });
     return partIDs;
-}
+};
 
 var getParamIDs = function (modelImpl) {
     let paramIDs = [];
     paramDefSet = modelImpl._$E2()._$4S;
-    paramDefSet.forEach(element => {
+    paramDefSet.forEach((element) => {
         paramIDs.push(element._$wL.id);
     });
     return paramIDs;
-}
+};
 
 // JavaScriptで発生したエラーを取得
 window.onerror = function (msg, url, line, col, error) {
     var errmsg = "file:" + url + "<br>line:" + line + " " + msg;
     l2dError(errmsg);
-}
+};
 
 function viewer() {
     this.platform = window.navigator.platform.toLowerCase();
@@ -52,7 +52,7 @@ function viewer() {
     this.deviceToScreen = null; /*new L2DMatrix44();*/
 
     this.drag = false; // ドラッグ中かどうか
-    this.oldLen = 0;    // 二本指タップした時の二点間の距離
+    this.oldLen = 0; // 二本指タップした時の二点間の距離
 
     this.lastMouseX = 0;
     this.lastMouseY = 0;
@@ -60,21 +60,18 @@ function viewer() {
     this.isModelShown = false;
 
     this.isPlay = true;
+    this.isLookRandom = false;
     this.frameCount = 0;
-
-
 
     document.addEventListener("keydown", function (e) {
         var keyCode = e.keyCode;
         if (keyCode == 90) {
             // z key
-            viewer.changeModel(-1)
-        }
-        else if (keyCode == 88) {
+            viewer.changeModel(-1);
+        } else if (keyCode == 88) {
             // x key
             viewer.changeModel(1);
-        }
-        else if (keyCode == 32) {
+        } else if (keyCode == 32) {
             viewer.flagBlacklist();
         }
     });
@@ -85,9 +82,8 @@ function viewer() {
         this.blacklist = fs.readFileSync(balcklistPath).toString().split("\n");
         // Append modelRoot to the paths
         this.blacklist.forEach((item, index) => {
-            this.blacklist[index] = path.join(modelRoot, item)
-        })
-
+            this.blacklist[index] = path.join(modelRoot, item);
+        });
     }
 
     // モデル描画用canvasの初期化
@@ -98,9 +94,9 @@ function viewer() {
 }
 
 viewer.goto = function () {
-    live2DMgr.count = parseInt(document.getElementById('editGoto').value) - 1;
+    live2DMgr.count = parseInt(document.getElementById("editGoto").value) - 1;
     viewer.changeModel(0);
-}
+};
 
 viewer.save = function (filepath = path.join(outputRoot, "image.png")) {
     // Save canvas to png file
@@ -108,7 +104,7 @@ viewer.save = function (filepath = path.join(outputRoot, "image.png")) {
     var data = img.replace(/^data:image\/\w+;base64,/, "");
     var buf = Buffer.from(data, "base64");
     fs.writeFileSync(filepath, buf);
-}
+};
 
 viewer.saveLayer = function (dir = path.join(outputRoot, "layer")) {
     // Create dir
@@ -140,11 +136,11 @@ viewer.saveLayer = function (dir = path.join(outputRoot, "layer")) {
         gl.clear(gl.COLOR_BUFFER_BIT);
         model.drawElement(gl, element);
         // Separate directory for each partID
-        if (!fs.existsSync(path.join(dir, partID))){
-            fs.mkdirSync(path.join(dir, partID))
+        if (!fs.existsSync(path.join(dir, partID))) {
+            fs.mkdirSync(path.join(dir, partID));
         }
         viewer.save(path.join(dir, partID, order + "_" + partID + ".png"));
-    })
+    });
 
     MatrixStack.pop();
 
@@ -152,12 +148,12 @@ viewer.saveLayer = function (dir = path.join(outputRoot, "layer")) {
     // viewer.draw(gl);
     // viewer.save(path.join(dir, "all.png"));
     isPlay = prevIsPlay;
-}
+};
 
 viewer.togglePlayPause = function () {
     isPlay = !isPlay;
-    btnPlayPause.textContent = (isPlay) ? "Pause" : "Play";
-}
+    btnPlayPause.textContent = isPlay ? "Pause" : "Play";
+};
 
 viewer.secret = function () {
     // Print model stat
@@ -170,20 +166,23 @@ viewer.secret = function () {
     parts = modelImpl._$F2;
     partsCount = parts.length;
     var elementCount = 0;
-    parts.forEach(element => {
+    parts.forEach((element) => {
         console.log(element.getDrawData());
         elementCount += element.getDrawData().length;
-    })
+    });
     console.log("partCount", partsCount);
     console.log("elementCount", elementCount);
-}
+};
 
 viewer.batch = function () {
     const delay = 1000;
     var count = live2DMgr.getCount();
     op = function () {
         if (count < live2DMgr.modelJsonList.length) {
-            console.log("Batch operation", document.getElementById("txtInfo").textContent)
+            console.log(
+                "Batch operation",
+                document.getElementById("txtInfo").textContent
+            );
             var no = ("000" + (count + 1)).slice(-4);
             var dir = path.join(outputRoot, no);
             fs.mkdirSync(dir, { recursive: true });
@@ -193,10 +192,10 @@ viewer.batch = function () {
             // Make a delay here
             setTimeout(op, delay);
         }
-    }
+    };
     // Start op
     op();
-}
+};
 
 viewer.resize = function () {
     const baseHeight = 1024;
@@ -209,10 +208,9 @@ viewer.resize = function () {
     if (modelHeight > modelWidth) {
         // Portrait
         canvas.width = baseResolution;
-        canvas.height = modelHeight / modelWidth * baseResolution;
-
+        canvas.height = (modelHeight / modelWidth) * baseResolution;
     } else {
-        canvas.width = modelWidth / modelHeight * baseResolution;
+        canvas.width = (modelWidth / modelHeight) * baseResolution;
         canvas.height = baseResolution;
     }
 
@@ -232,16 +230,18 @@ viewer.resize = function () {
     viewMatrix.setScreenRect(left, right, bottom, top);
 
     // デバイスに対応する画面の範囲。 Xの左端, Xの右端, Yの下端, Yの上端
-    viewMatrix.setMaxScreenRect(LAppDefine.VIEW_LOGICAL_MAX_LEFT,
+    viewMatrix.setMaxScreenRect(
+        LAppDefine.VIEW_LOGICAL_MAX_LEFT,
         LAppDefine.VIEW_LOGICAL_MAX_RIGHT,
         LAppDefine.VIEW_LOGICAL_MAX_BOTTOM,
-        LAppDefine.VIEW_LOGICAL_MAX_TOP);
+        LAppDefine.VIEW_LOGICAL_MAX_TOP
+    );
 
     viewMatrix.setMaxScale(LAppDefine.VIEW_MAX_SCALE);
     viewMatrix.setMinScale(LAppDefine.VIEW_MIN_SCALE);
 
     projMatrix = new L2DMatrix44();
-    projMatrix.multScale(1, (canvas.width / canvas.height));
+    projMatrix.multScale(1, canvas.width / canvas.height);
 
     // マウス用スクリーン変換行列
     deviceToScreen = new L2DMatrix44();
@@ -249,7 +249,7 @@ viewer.resize = function () {
     deviceToScreen.multScale(2 / canvas.width, -2 / canvas.width);
 
     gl.viewport(0, 0, canvas.width, canvas.height);
-}
+};
 
 viewer.initL2dCanvas = function (canvasId) {
     // canvasオブジェクトを取得
@@ -272,40 +272,65 @@ viewer.initL2dCanvas = function (canvasId) {
         canvas.addEventListener("touchend", touchEvent, false);
         canvas.addEventListener("touchmove", touchEvent, false);
     }
-}
+};
 
 viewer.init = function () {
     // Initialize UI components
     btnPrev = document.getElementById("btnPrev");
     btnNext = document.getElementById("btnNext");
-    btnPrev.addEventListener("click", function (e) { viewer.changeModel(-1) });
-    btnNext.addEventListener("click", function (e) { viewer.changeModel(1) });
+    btnPrev.addEventListener("click", function (e) {
+        viewer.changeModel(-1);
+    });
+    btnNext.addEventListener("click", function (e) {
+        viewer.changeModel(1);
+    });
 
     btnGoto = document.getElementById("btnGoto");
-    btnGoto.addEventListener("click", function (e) { viewer.goto() });
+    btnGoto.addEventListener("click", function (e) {
+        viewer.goto();
+    });
 
     btnPlayPause = document.getElementById("btnPlayPause");
-    btnPlayPause.addEventListener("click", function (e) { viewer.togglePlayPause() });
-    btnPlayPause.textContent = (isPlay) ? "Pause" : "Play";
+    btnPlayPause.addEventListener("click", function (e) {
+        viewer.togglePlayPause();
+    });
+    btnPlayPause.textContent = isPlay ? "Pause" : "Play";
 
     btnSave = document.getElementById("btnSave");
-    btnSave.addEventListener("click", function (e) { viewer.save() });
+    btnSave.addEventListener("click", function (e) {
+        viewer.save();
+    });
 
     btnSaveLayer = document.getElementById("btnSaveLayer");
-    btnSaveLayer.addEventListener("click", function (e) { viewer.saveLayer() });
+    btnSaveLayer.addEventListener("click", function (e) {
+        viewer.saveLayer();
+    });
 
     btnSecret = document.getElementById("btnSecret");
-    btnSecret.addEventListener("click", function (e) { viewer.secret() });
+    btnSecret.addEventListener("click", function (e) {
+        viewer.secret();
+    });
 
     btnBatch = document.getElementById("btnBatch");
-    btnBatch.addEventListener("click", function (e) { viewer.batch() });
+    btnBatch.addEventListener("click", function (e) {
+        viewer.batch();
+    });
 
     btnResize = document.getElementById("btnResize");
-    btnResize.addEventListener("click", function (e) { viewer.resize() });
+    btnResize.addEventListener("click", function (e) {
+        viewer.resize();
+    });
+
+    btnLookRandom = document.getElementById("btnLookRandom");
+    btnLookRandom.addEventListener("click", function (e) {
+        isLookRandom = !isLookRandom;
+    });
 
     // Load all models
     let filelist = [];
-    walkdir(modelRoot, function (filepath) { filelist.push(filepath) });
+    walkdir(modelRoot, function (filepath) {
+        filelist.push(filepath);
+    });
     live2DMgr.setModelJsonList(loadModel(filelist));
 
     // 3Dバッファの初期化
@@ -327,22 +352,23 @@ viewer.init = function () {
     viewMatrix.setScreenRect(left, right, bottom, top);
 
     // デバイスに対応する画面の範囲。 Xの左端, Xの右端, Yの下端, Yの上端
-    viewMatrix.setMaxScreenRect(LAppDefine.VIEW_LOGICAL_MAX_LEFT,
+    viewMatrix.setMaxScreenRect(
+        LAppDefine.VIEW_LOGICAL_MAX_LEFT,
         LAppDefine.VIEW_LOGICAL_MAX_RIGHT,
         LAppDefine.VIEW_LOGICAL_MAX_BOTTOM,
-        LAppDefine.VIEW_LOGICAL_MAX_TOP);
+        LAppDefine.VIEW_LOGICAL_MAX_TOP
+    );
 
     viewMatrix.setMaxScale(LAppDefine.VIEW_MAX_SCALE);
     viewMatrix.setMinScale(LAppDefine.VIEW_MIN_SCALE);
 
     projMatrix = new L2DMatrix44();
-    projMatrix.multScale(1, (width / height));
+    projMatrix.multScale(1, width / height);
 
     // マウス用スクリーン変換行列
     deviceToScreen = new L2DMatrix44();
     deviceToScreen.multTranslate(-width / 2.0, -height / 2.0);
     deviceToScreen.multScale(2 / width, -2 / width);
-
 
     // WebGLのコンテキストを取得する
     gl = getWebGLContext();
@@ -360,8 +386,7 @@ viewer.init = function () {
     viewer.changeModel(0);
 
     viewer.startDraw();
-}
-
+};
 
 viewer.startDraw = function () {
     if (!isDrawStart) {
@@ -381,8 +406,7 @@ viewer.startDraw = function () {
             requestAnimationFrame(tick, canvas);
         })();
     }
-}
-
+};
 
 viewer.draw = function () {
     // l2dLog("--> draw()");
@@ -390,6 +414,10 @@ viewer.draw = function () {
 
     MatrixStack.reset();
     MatrixStack.loadIdentity();
+
+    if (frameCount % 30 == 0) {
+        lookRandom();
+    }
 
     dragMgr.update(); // ドラッグ用パラメータの更新
 
@@ -432,7 +460,7 @@ viewer.draw = function () {
     if (isPlay) {
         frameCount++;
     }
-}
+};
 
 viewer.changeModel = function (inc = 1) {
     btnPrev = document.getElementById("btnPrev");
@@ -446,25 +474,31 @@ viewer.changeModel = function (inc = 1) {
     isModelShown = false;
 
     live2DMgr.reloadFlg = true;
-    live2DMgr.count += inc
+    live2DMgr.count += inc;
 
     txtInfo = document.getElementById("txtInfo");
 
     var count = live2DMgr.getCount();
     var curModelPath = live2DMgr.modelJsonList[count];
-    txtInfo.textContent = "[" + (count + 1) + "/" + live2DMgr.modelJsonList.length + "] " + curModelPath;
+    txtInfo.textContent =
+        "[" +
+        (count + 1) +
+        "/" +
+        live2DMgr.modelJsonList.length +
+        "] " +
+        curModelPath;
 
     live2DMgr.changeModel(gl, viewer.resize);
-}
+};
 
 viewer.flagBlacklist = function () {
     var count = live2DMgr.getCount();
     var curModelPath = live2DMgr.modelJsonList[count];
-    relativeCurModelPath = curModelPath.slice(modelRoot.length + 1) // Include the '/'
+    relativeCurModelPath = curModelPath.slice(modelRoot.length + 1); // Include the '/'
     blacklistPath = "blacklist.txt";
-    fs.appendFileSync(blacklistPath, relativeCurModelPath + '\n');
-    console.log('flagBlacklist', 'Flagged ' + relativeCurModelPath);
-}
+    fs.appendFileSync(blacklistPath, relativeCurModelPath + "\n");
+    console.log("flagBlacklist", "Flagged " + relativeCurModelPath);
+};
 
 function prettyPrintEveryJson() {
     walkdir(modelRoot, (file) => {
@@ -476,7 +510,7 @@ function prettyPrintEveryJson() {
                 console.error("JSON Parse Error", file);
             }
         }
-    })
+    });
 }
 
 function loadModel(filelist) {
@@ -488,14 +522,11 @@ function loadModel(filelist) {
                 modelJsonList.push(...modelJson);
             }
         }
-    })
+    });
     modelJsonList = [...new Set(modelJsonList)];
-    modelJsonList = modelJsonList.filter(
-        function (e) {
-            return this.indexOf(e) < 0;
-        },
-        this.blacklist
-    );
+    modelJsonList = modelJsonList.filter(function (e) {
+        return this.indexOf(e) < 0;
+    }, this.blacklist);
     console.log("loadModel", modelJsonList.length + " model loaded");
     return modelJsonList;
 }
@@ -508,40 +539,46 @@ function getJson(mocPath) {
     let modelJson = [];
     walkdir(pardir, function (filepath) {
         if (filepath.endsWith(".png")) {
-            textures.push(filepath.replace(pardir + '/', ''));
+            textures.push(filepath.replace(pardir + "/", ""));
         } else if (filepath.endsWith(".mtn")) {
-            motions.push(filepath.replace(pardir + '/', ''));
-        } else if (filepath.endsWith("physics") || filepath.endsWith("physics.json")) {
-            physics.push(filepath.replace(pardir + '/', ''));
+            motions.push(filepath.replace(pardir + "/", ""));
+        } else if (
+            filepath.endsWith("physics") ||
+            filepath.endsWith("physics.json")
+        ) {
+            physics.push(filepath.replace(pardir + "/", ""));
         } else if (filepath.endsWith("model.json")) {
             modelJson.push(filepath);
         }
-    })
+    });
     if (modelJson.length == 0) {
         if (textures.length == 0) {
-            console.warn('getJson', '0 texture found! .moc path: ' + mocPath);
+            console.warn("getJson", "0 texture found! .moc path: " + mocPath);
         }
         if (physics.length > 1) {
-            console.warn('getJson', 'more than 1 physics found! .moc path: ' + mocPath);
+            console.warn(
+                "getJson",
+                "more than 1 physics found! .moc path: " + mocPath
+            );
         }
         textures.sort();
         motions.sort();
         var model = {};
         model["version"] = "Sample 1.0.0";
-        model["model"] = mocPath.replace(pardir + '/', '');
+        model["model"] = mocPath.replace(pardir + "/", "");
         model["textures"] = textures;
         if (motions.length > 0) {
-            model["motions"] = { "idle": [] };
-            motions.forEach(motion => {
+            model["motions"] = { idle: [] };
+            motions.forEach((motion) => {
                 // Set all motion as idle motion, check commented out code for previous method
-                model["motions"]["idle"].push({ "file": motion });
+                model["motions"]["idle"].push({ file: motion });
                 // var basename = path.basename(motion, ".mtn");
                 // if (basename.includes("idle")) {
                 //     model["motions"]["idle"].push({ "file": motion });
                 // } else {
                 //     model["motions"][basename] = { "file": motion };
                 // }
-            })
+            });
         }
         json = JSON.stringify(model, null, 3);
         modelJson.push(path.join(pardir, "generated.model.json"));
@@ -561,9 +598,8 @@ function walkdir(dir, callback) {
         } else if (stats.isFile()) {
             callback(filepath);
         }
-    })
+    });
 }
-
 
 /* ********** マウスイベント ********** */
 
@@ -590,7 +626,6 @@ function modelScaling(scale) {
     }
 }
 
-
 /*
  * クリックされた方向を向く
  * タップされた場所に応じてモーションを再生
@@ -606,7 +641,17 @@ function modelTurnHead(event) {
     var vy = transformViewY(event.clientY - rect.top);
 
     if (LAppDefine.DEBUG_MOUSE_LOG)
-        l2dLog("onMouseDown device( x:" + event.clientX + " y:" + event.clientY + " ) view( x:" + vx + " y:" + vy + ")");
+        l2dLog(
+            "onMouseDown device( x:" +
+            event.clientX +
+            " y:" +
+            event.clientY +
+            " ) view( x:" +
+            vx +
+            " y:" +
+            vy +
+            ")"
+        );
 
     thisRef.lastMouseX = sx;
     thisRef.lastMouseY = sy;
@@ -616,7 +661,6 @@ function modelTurnHead(event) {
     // タップした場所に応じてモーションを再生
     thisRef.live2DMgr.tapEvent(vx, vy);
 }
-
 
 /*
  * マウスを動かした時のイベント
@@ -630,7 +674,17 @@ function followPointer(event) {
     var vy = transformViewY(event.clientY - rect.top);
 
     if (LAppDefine.DEBUG_MOUSE_LOG)
-        l2dLog("onMouseMove device( x:" + event.clientX + " y:" + event.clientY + " ) view( x:" + vx + " y:" + vy + ")");
+        l2dLog(
+            "onMouseMove device( x:" +
+            event.clientX +
+            " y:" +
+            event.clientY +
+            " ) view( x:" +
+            vx +
+            " y:" +
+            vy +
+            ")"
+        );
 
     if (thisRef.drag) {
         thisRef.lastMouseX = sx;
@@ -639,7 +693,6 @@ function followPointer(event) {
         thisRef.dragMgr.setPoint(vx, vy); // その方向を向く
     }
 }
-
 
 /*
  * 正面を向く
@@ -652,43 +705,46 @@ function lookFront() {
     thisRef.dragMgr.setPoint(0, 0);
 }
 
+function lookRandom() {
+    if (thisRef.isLookRandom) {
+        sx = Math.random() * 2.0 - 1.0;
+        sy = Math.random() * 2.0 - 1.0;
+        thisRef.dragMgr.setPoint(sx, sy);
+        console.log("lookRandom", sx, sy);
+    }
+}
 
 function mouseEvent(e) {
     e.preventDefault();
 
     if (e.type == "mousewheel") {
-        if (e.clientX < 0 || thisRef.canvas.clientWidth < e.clientX ||
-            e.clientY < 0 || thisRef.canvas.clientHeight < e.clientY) {
+        if (
+            e.clientX < 0 ||
+            thisRef.canvas.clientWidth < e.clientX ||
+            e.clientY < 0 ||
+            thisRef.canvas.clientHeight < e.clientY
+        ) {
             return;
         }
 
-        if (e.wheelDelta > 0) modelScaling(1.1); // 上方向スクロール 拡大
+        if (e.wheelDelta > 0) modelScaling(1.1);
+        // 上方向スクロール 拡大
         else modelScaling(0.9); // 下方向スクロール 縮小
-
     } else if (e.type == "mousedown") {
-
         // 右クリック以外なら処理を抜ける
         if ("button" in e && e.button != 0) return;
 
         modelTurnHead(e);
-
     } else if (e.type == "mousemove") {
-
         followPointer(e);
-
     } else if (e.type == "mouseup") {
-
         // 右クリック以外なら処理を抜ける
         if ("button" in e && e.button != 0) return;
 
         lookFront();
-
     } else if (e.type == "mouseout") {
-
         lookFront();
-
     }
-
 }
 
 function touchEvent(e) {
@@ -699,7 +755,6 @@ function touchEvent(e) {
     if (e.type == "touchstart") {
         if (e.touches.length == 1) modelTurnHead(touch);
         // onClick(touch);
-
     } else if (e.type == "touchmove") {
         followPointer(touch);
 
@@ -707,13 +762,15 @@ function touchEvent(e) {
             var touch1 = e.touches[0];
             var touch2 = e.touches[1];
 
-            var len = Math.pow(touch1.pageX - touch2.pageX, 2) + Math.pow(touch1.pageY - touch2.pageY, 2);
-            if (thisRef.oldLen - len < 0) modelScaling(1.025); // 上方向スクロール 拡大
+            var len =
+                Math.pow(touch1.pageX - touch2.pageX, 2) +
+                Math.pow(touch1.pageY - touch2.pageY, 2);
+            if (thisRef.oldLen - len < 0) modelScaling(1.025);
+            // 上方向スクロール 拡大
             else modelScaling(0.975); // 下方向スクロール 縮小
 
             thisRef.oldLen = len;
         }
-
     } else if (e.type == "touchend") {
         lookFront();
     }
@@ -725,42 +782,41 @@ function transformViewX(deviceX) {
     return viewMatrix.invertTransformX(screenX); // 拡大、縮小、移動後の値。
 }
 
-
 function transformViewY(deviceY) {
     var screenY = this.deviceToScreen.transformY(deviceY); // 論理座標変換した座標を取得。
     return viewMatrix.invertTransformY(screenY); // 拡大、縮小、移動後の値。
 }
 
-
 function transformScreenX(deviceX) {
     return this.deviceToScreen.transformX(deviceX);
 }
-
 
 function transformScreenY(deviceY) {
     return this.deviceToScreen.transformY(deviceY);
 }
 
 /*
-* WebGLのコンテキストを取得する
-*/
+ * WebGLのコンテキストを取得する
+ */
 function getWebGLContext() {
     var NAMES = ["webgl", "experimental-webgl", "webkit-3d", "moz-webgl"];
 
     for (var i = 0; i < NAMES.length; i++) {
         try {
-            var ctx = this.canvas.getContext(NAMES[i], { premultipliedAlpha: true, preserveDrawingBuffer: true });
+            var ctx = this.canvas.getContext(NAMES[i], {
+                premultipliedAlpha: true,
+                preserveDrawingBuffer: true,
+            });
             if (ctx) return ctx;
-        }
-        catch (e) { }
+        } catch (e) { }
     }
     return null;
-};
+}
 
 /*
-* 画面エラーを出力
-*/
+ * 画面エラーを出力
+ */
 function l2dError(msg) {
     if (!LAppDefine.DEBUG_LOG) return;
     console.error(msg);
-};
+}
