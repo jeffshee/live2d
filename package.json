@@ -1,7 +1,6 @@
 {
   "name": "live2d",
   "version": "1.0.0",
-  "description": "",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
@@ -14,5 +13,14 @@
   },
   "dependencies": {
     "package.json": "^2.0.1"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jeffshee/live2d.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jeffshee/live2d/issues"
+  },
+  "homepage": "https://github.com/jeffshee/live2d#readme",
+  "description": ""
 }
