@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const nativeTheme = require("electron");
@@ -6,9 +7,11 @@ const { timeStamp, time } = require("console");
 nativeTheme.themeSource = "dark";
 
 // Parameters
-const modelRoot = "../../data/Live2d-model";
-const outputRoot = "output";
+const datasetRoot = "dataset"; // Root of dataset directory
+const blacklistPath = path.join(datasetRoot, "blacklist.txt"); // Blacklist path
+const outputRoot = "output"; // Root of output directory
 const baseResolution = 1024;
+const ignoreOriginalJson = true; // Ignore the original JSON file and use the self-generated one instead
 
 var thisRef = this;
 
@@ -63,6 +66,7 @@ function viewer() {
     this.isLookRandom = false;
     this.frameCount = 0;
 
+    // Shortcut keys
     document.addEventListener("keydown", function (e) {
         var keyCode = e.keyCode;
         if (keyCode == 90) {
@@ -72,17 +76,17 @@ function viewer() {
             // x key
             viewer.changeModel(1);
         } else if (keyCode == 32) {
+            // space key
             viewer.flagBlacklist();
         }
     });
 
     this.blacklist = [];
-    balcklistPath = "blacklist.txt";
-    if (fs.existsSync(balcklistPath)) {
-        this.blacklist = fs.readFileSync(balcklistPath).toString().split("\n");
-        // Append modelRoot to the paths
+    if (fs.existsSync(blacklistPath)) {
+        this.blacklist = fs.readFileSync(blacklistPath).toString().split("\n");
+        // Append datasetRoot to the paths
         this.blacklist.forEach((item, index) => {
-            this.blacklist[index] = path.join(modelRoot, item);
+            this.blacklist[index] = path.join(datasetRoot, item);
         });
     }
 
@@ -144,9 +148,6 @@ viewer.saveLayer = function (dir = path.join(outputRoot, "layer")) {
 
     MatrixStack.pop();
 
-    // Draw an image with all elements
-    // viewer.draw(gl);
-    // viewer.save(path.join(dir, "all.png"));
     isPlay = prevIsPlay;
 };
 
@@ -174,6 +175,7 @@ viewer.secret = function () {
     console.log("elementCount", elementCount);
 };
 
+// TODO
 viewer.batch = function () {
     const delay = 1000;
     var count = live2DMgr.getCount();
@@ -328,7 +330,7 @@ viewer.init = function () {
 
     // Load all models
     let filelist = [];
-    walkdir(modelRoot, function (filepath) {
+    walkdir(datasetRoot, function (filepath) {
         filelist.push(filepath);
     });
     live2DMgr.setModelJsonList(loadModel(filelist));
@@ -486,7 +488,9 @@ viewer.changeModel = function (inc = 1) {
         "/" +
         live2DMgr.modelJsonList.length +
         "] " +
-        curModelPath;
+        curModelPath +
+        " ,MD5: " +
+        md5file(curModelPath);
 
     live2DMgr.changeModel(gl, viewer.resize);
 };
@@ -494,14 +498,13 @@ viewer.changeModel = function (inc = 1) {
 viewer.flagBlacklist = function () {
     var count = live2DMgr.getCount();
     var curModelPath = live2DMgr.modelJsonList[count];
-    relativeCurModelPath = curModelPath.slice(modelRoot.length + 1); // Include the '/'
-    blacklistPath = "blacklist.txt";
+    relativeCurModelPath = curModelPath.slice(datasetRoot.length + 1); // Include the '/'
     fs.appendFileSync(blacklistPath, relativeCurModelPath + "\n");
     console.log("flagBlacklist", "Flagged " + relativeCurModelPath);
 };
 
 function prettyPrintEveryJson() {
-    walkdir(modelRoot, (file) => {
+    walkdir(datasetRoot, (file) => {
         if (file.endsWith(".json")) {
             j = fs.readFileSync(file).toString();
             try {
@@ -511,6 +514,13 @@ function prettyPrintEveryJson() {
             }
         }
     });
+}
+
+function md5file(filePath) {
+    const target = fs.readFileSync(filePath);
+    const md5hash = crypto.createHash("md5");
+    md5hash.update(target);
+    return md5hash.digest("hex");
 }
 
 function loadModel(filelist) {
@@ -524,6 +534,7 @@ function loadModel(filelist) {
         }
     });
     modelJsonList = [...new Set(modelJsonList)];
+    // Filter out the blacklisted models
     modelJsonList = modelJsonList.filter(function (e) {
         return this.indexOf(e) < 0;
     }, this.blacklist);
@@ -548,9 +559,12 @@ function getJson(mocPath) {
         ) {
             physics.push(filepath.replace(pardir + "/", ""));
         } else if (filepath.endsWith("model.json")) {
-            modelJson.push(filepath);
+            if (!ignoreOriginalJson) {
+                modelJson.push(filepath);
+            }
         }
     });
+    // Generate a JSON file based on all the resources we can find
     if (modelJson.length == 0) {
         if (textures.length == 0) {
             console.warn("getJson", "0 texture found! .moc path: " + mocPath);
@@ -581,14 +595,14 @@ function getJson(mocPath) {
             });
         }
         json = JSON.stringify(model, null, 3);
-        modelJson.push(path.join(pardir, "generated.model.json"));
-        fs.writeFileSync(modelJson[0], json);
+        generatedJsonPath = path.join(pardir, "generated.model.json");
+        modelJson.push(generatedJsonPath);
+        fs.writeFileSync(generatedJsonPath, json);
     }
     return modelJson;
 }
 
 function walkdir(dir, callback) {
-    // console.log("walkdir", dir);
     const files = fs.readdirSync(dir);
     files.forEach((file) => {
         var filepath = path.join(dir, file);
@@ -643,14 +657,14 @@ function modelTurnHead(event) {
     if (LAppDefine.DEBUG_MOUSE_LOG)
         l2dLog(
             "onMouseDown device( x:" +
-            event.clientX +
-            " y:" +
-            event.clientY +
-            " ) view( x:" +
-            vx +
-            " y:" +
-            vy +
-            ")"
+                event.clientX +
+                " y:" +
+                event.clientY +
+                " ) view( x:" +
+                vx +
+                " y:" +
+                vy +
+                ")"
         );
 
     thisRef.lastMouseX = sx;
@@ -676,14 +690,14 @@ function followPointer(event) {
     if (LAppDefine.DEBUG_MOUSE_LOG)
         l2dLog(
             "onMouseMove device( x:" +
-            event.clientX +
-            " y:" +
-            event.clientY +
-            " ) view( x:" +
-            vx +
-            " y:" +
-            vy +
-            ")"
+                event.clientX +
+                " y:" +
+                event.clientY +
+                " ) view( x:" +
+                vx +
+                " y:" +
+                vy +
+                ")"
         );
 
     if (thisRef.drag) {
@@ -808,7 +822,7 @@ function getWebGLContext() {
                 preserveDrawingBuffer: true,
             });
             if (ctx) return ctx;
-        } catch (e) { }
+        } catch (e) {}
     }
     return null;
 }

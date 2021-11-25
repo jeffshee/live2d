@@ -9,13 +9,13 @@ npm install
 ```
 
 # Usage
-Live2d models should be placed in `asset` directory.
+Live2d models should be placed in `dataset` directory.
 Get the models from here:
 https://github.com/Eikanya/Live2d-model
 
 Or simply clone the repository
 ```
-git clone https://github.com/Eikanya/Live2d-model -o asset
+git clone https://github.com/Eikanya/Live2d-model dataset
 ```
 
 To launch Live2D-tool GUI

@@ -3051,7 +3051,7 @@ For licensing, http://link.live2d.com/sdk_license
         this._$b0 = y._$HP++;
         this.clipManager = null;
         this.dp_webgl = null;
-        // Hack
+        // Patch @jeffshee
         this.first = true;
     }
     y._$HP = 0;
@@ -3327,7 +3327,7 @@ For licensing, http://link.live2d.com/sdk_license
             } while (true);
         }
     };
-    // Hack
+    // Patch @jeffshee
     y.prototype.getElementList = function (aM) {
         if (this._$Ws == null) {
             q._$li("call _$Ri.update() before _$Ri.draw() ");
@@ -3359,7 +3359,7 @@ For licensing, http://link.live2d.com/sdk_license
         }
         return elementList;
     }
-    // Hack
+    // Patch @jeffshee
     y.prototype.drawElement = function (aM, element) {
         aM._$ZT();
         var aH = this._$aS[element];
@@ -5926,11 +5926,11 @@ For licensing, http://link.live2d.com/sdk_license
     l.prototype.draw = function () {
         this._$5S.draw(this.drawParamWebGL);
     };
-    // Hack
+    // Patch @jeffshee
     l.prototype.getElementList = function () {
         return this._$5S.getElementList(this.drawParamWebGL);
     }
-    // Hack
+    // Patch @jeffshee
     l.prototype.drawElement = function (element) {
         this._$5S.drawElement(this.drawParamWebGL, element);
     }
