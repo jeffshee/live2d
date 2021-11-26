@@ -8,12 +8,16 @@ nativeTheme.themeSource = "dark";
 
 // Parameters
 const datasetRoot = "dataset"; // Root of dataset directory
-const blacklistPath = path.join(datasetRoot, "blacklist.txt"); // Blacklist path
 const outputRoot = "output"; // Root of output directory
+const blacklistPath = path.join(outputRoot, "blacklist.txt"); // Blacklist path
 const baseResolution = 1024;
-const ignoreOriginalJson = true; // Ignore the original JSON file and use the self-generated one instead
+const ignoreGeneratedJson = true; // Ignore the generated JSON file
+const ignoreOriginalJson = true; // Ignore the original JSON file
+const batchOperationMinDelay = 1000;
+const batchOperationDelayRange = 1000;
 
 var thisRef = this;
+let modelJsonIds = {};
 
 var getPartIDs = function (modelImpl) {
     let partIDs = [];
@@ -161,8 +165,8 @@ viewer.secret = function () {
     var live2DModel = live2DMgr.getModel(0).live2DModel;
     var modelImpl = live2DModel.getModelImpl();
 
-    console.log("getPartIDs", getPartIDs(modelImpl));
-    console.log("getParamIDs", getParamIDs(modelImpl));
+    console.log("[getPartIDs]", getPartIDs(modelImpl));
+    console.log("[getParamIDs]", getParamIDs(modelImpl));
 
     parts = modelImpl._$F2;
     partsCount = parts.length;
@@ -171,27 +175,52 @@ viewer.secret = function () {
         console.log(element.getDrawData());
         elementCount += element.getDrawData().length;
     });
-    console.log("partCount", partsCount);
-    console.log("elementCount", elementCount);
+    console.log("[partCount]", partsCount);
+    console.log("[elementCount]", elementCount);
 };
 
 // TODO
 viewer.batch = function () {
-    const delay = 1000;
     var count = live2DMgr.getCount();
     op = function () {
         if (count < live2DMgr.modelJsonList.length) {
-            console.log(
-                "Batch operation",
-                document.getElementById("txtInfo").textContent
-            );
-            var no = ("000" + (count + 1)).slice(-4);
-            var dir = path.join(outputRoot, no);
+            var curModelPath = live2DMgr.modelJsonList[count];
+            var id = modelJsonIds[curModelPath];
+            var curMotion = live2DMgr.currentIdleMotion();
+            var progress =
+                "[" +
+                (count + 1) +
+                "/" +
+                live2DMgr.modelJsonList.length +
+                "] " +
+                "[" +
+                (curMotion + 1) +
+                "/" +
+                live2DMgr.idleMotionNum() +
+                "] " +
+                curModelPath;
+            console.log("[batch]", progress);
+            var tag =
+                ("000" + (id + 1)).slice(-4) +
+                "_mtn" +
+                ("0" + (curMotion + 1)).slice(-2);
+            var dir = path.join(outputRoot, tag);
+            console.log("[batch] output to", dir);
             fs.mkdirSync(dir, { recursive: true });
             viewer.saveLayer(dir);
-            viewer.changeModel(1);
-            count++;
+            if (!live2DMgr.nextIdleMotion()) {
+                viewer.changeModel(1);
+                count++;
+            }
             // Make a delay here
+            var delay =
+                batchOperationMinDelay +
+                Math.floor(Math.random() * batchOperationDelayRange);
+            console.log(
+                "[batch] next operation will be started after",
+                delay,
+                "ms"
+            );
             setTimeout(op, delay);
         }
     };
@@ -326,6 +355,15 @@ viewer.init = function () {
     btnLookRandom = document.getElementById("btnLookRandom");
     btnLookRandom.addEventListener("click", function (e) {
         isLookRandom = !isLookRandom;
+    });
+
+    btnPrevMotion = document.getElementById("btnPrevMotion");
+    btnPrevMotion.addEventListener("click", function (e) {
+        live2DMgr.prevIdleMotion();
+    });
+    btnNextMotion = document.getElementById("btnNextMotion");
+    btnNextMotion.addEventListener("click", function (e) {
+        live2DMgr.nextIdleMotion();
     });
 
     // Load all models
@@ -488,10 +526,9 @@ viewer.changeModel = function (inc = 1) {
         "/" +
         live2DMgr.modelJsonList.length +
         "] " +
-        curModelPath +
-        " ,MD5: " +
-        md5file(curModelPath);
-
+        curModelPath;
+    console.log("[curModelPath]", curModelPath);
+    // console.log("[MD5]", curModelPath);
     live2DMgr.changeModel(gl, viewer.resize);
 };
 
@@ -500,7 +537,7 @@ viewer.flagBlacklist = function () {
     var curModelPath = live2DMgr.modelJsonList[count];
     relativeCurModelPath = curModelPath.slice(datasetRoot.length + 1); // Include the '/'
     fs.appendFileSync(blacklistPath, relativeCurModelPath + "\n");
-    console.log("flagBlacklist", "Flagged " + relativeCurModelPath);
+    console.log("[flagBlacklist]", "Flagged " + relativeCurModelPath);
 };
 
 function prettyPrintEveryJson() {
@@ -527,37 +564,55 @@ function loadModel(filelist) {
     let modelJsonList = [];
     filelist.forEach((filepath) => {
         if (filepath.endsWith(".moc")) {
-            modelJson = getJson(filepath);
+            modelJson = loadModelJson(filepath);
             if (modelJson) {
                 modelJsonList.push(...modelJson);
             }
         }
     });
     modelJsonList = [...new Set(modelJsonList)];
+    modelJsonList.forEach((value, index) => {
+        modelJsonIds[value] = index;
+    });
     // Filter out the blacklisted models
     modelJsonList = modelJsonList.filter(function (e) {
         return this.indexOf(e) < 0;
     }, this.blacklist);
-    console.log("loadModel", modelJsonList.length + " model loaded");
+    console.log("[loadModel]", modelJsonList.length + " model loaded");
     return modelJsonList;
 }
 
-function getJson(mocPath) {
+function loadModelJson(mocPath) {
     pardir = path.dirname(mocPath);
-    let textures = [];
-    let motions = [];
-    let physics = [];
+    let textures = []; // *.png
+    let physics; // *.physics or physics.json
+    let pose; // pose.json
+    let expressions = []; // *.exp.json
+    let motions = []; // *.mtn
     let modelJson = [];
     walkdir(pardir, function (filepath) {
         if (filepath.endsWith(".png")) {
             textures.push(filepath.replace(pardir + "/", ""));
-        } else if (filepath.endsWith(".mtn")) {
-            motions.push(filepath.replace(pardir + "/", ""));
-        } else if (
-            filepath.endsWith("physics") ||
+        }
+        if (
+            filepath.endsWith(".physics") ||
             filepath.endsWith("physics.json")
         ) {
-            physics.push(filepath.replace(pardir + "/", ""));
+            physics = filepath.replace(pardir + "/", "");
+        }
+        if (filepath.endsWith("pose.json")) {
+            pose = filepath.replace(pardir + "/", "");
+        }
+        if (filepath.endsWith(".mtn")) {
+            motions.push(filepath.replace(pardir + "/", ""));
+        }
+        if (filepath.endsWith(".exp.json")) {
+            expressions.push(filepath.replace(pardir + "/", ""));
+        }
+        if (filepath.endsWith("generated.model.json")) {
+            if (!ignoreGeneratedJson) {
+                modelJson.push(filepath);
+            }
         } else if (filepath.endsWith("model.json")) {
             if (!ignoreOriginalJson) {
                 modelJson.push(filepath);
@@ -567,31 +622,34 @@ function getJson(mocPath) {
     // Generate a JSON file based on all the resources we can find
     if (modelJson.length == 0) {
         if (textures.length == 0) {
-            console.warn("getJson", "0 texture found! .moc path: " + mocPath);
-        }
-        if (physics.length > 1) {
             console.warn(
-                "getJson",
-                "more than 1 physics found! .moc path: " + mocPath
+                "[loadModelJson]",
+                "0 texture found! .moc path: " + mocPath
             );
+            // Usually is a corrupted model, ignore
+            return;
         }
         textures.sort();
         motions.sort();
         var model = {};
-        model["version"] = "Sample 1.0.0";
+        model["version"] = "AutoGenerated 1.0.0";
         model["model"] = mocPath.replace(pardir + "/", "");
         model["textures"] = textures;
+        if (physics) model["physics"] = physics;
+        if (pose) model["pose"] = pose;
+        if (expressions.length > 0) {
+            model["expressions"] = [];
+            expressions.forEach((expression) => {
+                model["expressions"].push({
+                    file: expression,
+                    name: path.basename(expression),
+                });
+            });
+        }
         if (motions.length > 0) {
             model["motions"] = { idle: [] };
             motions.forEach((motion) => {
-                // Set all motion as idle motion, check commented out code for previous method
                 model["motions"]["idle"].push({ file: motion });
-                // var basename = path.basename(motion, ".mtn");
-                // if (basename.includes("idle")) {
-                //     model["motions"]["idle"].push({ "file": motion });
-                // } else {
-                //     model["motions"][basename] = { "file": motion };
-                // }
             });
         }
         json = JSON.stringify(model, null, 3);
@@ -724,7 +782,7 @@ function lookRandom() {
         sx = Math.random() * 2.0 - 1.0;
         sy = Math.random() * 2.0 - 1.0;
         thisRef.dragMgr.setPoint(sx, sy);
-        console.log("lookRandom", sx, sy);
+        console.log("[lookRandom]", sx, sy);
     }
 }
 
